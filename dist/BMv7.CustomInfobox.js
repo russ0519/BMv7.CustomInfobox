@@ -38,62 +38,33 @@
 *	customInfobox.show(map.getCenter(), "Hello World");
 *}
 ********************************************************************************/
-/*******************************************************************************
-* Author: Ricky Brundritt
-* Website: http://rbrundritt.wordpress.com
-* Date: May 21nd, 2011
-* 
-* Description: 
-* This JavaScript file is meant to create a infobox control that is highly 
-* customizable, reusable, and easy to extend. This method takes in a map 
-* reference, and a set of options. 
-* 
-* Example Usage:
-*
-* var map, customInfobox;
-*
-* function GetMap()
-* {
-*	var map = new Microsoft.Maps.Map(document.getElementById("myMap"),{ credentials: "YOUR_BING_MAPS_KEY" });
-*	
-*	Microsoft.Maps.registerModule("CustomInfoboxModule", "scripts/V7CustomInfobox.min.js");
-*	    Microsoft.Maps.loadModule("CustomInfoboxModule", { callback: function () {
-*	        customInfobox = new CustomInfobox(map);
-*	    }
-*	});
-* }
-*
-* //Have data be returned from data source and added to the cluster layer
-* function ClusterLayer(results)
-* {
-* 	clusteredLayer.SetData(results);
-* }
-*
-* function displayInfobox() {
-*	customInfobox.show(map.getCenter(), "Hello World");
-*}
-********************************************************************************/
-
 var CustomInfobox = function (map, options) {
     var _map = map,
-    _content,
-    _anchor,
-    _infoboxContainerId,
-    _handlerId;
+    _content=null,
+    _anchor=null,
+    _infoboxContainerId=null,
+    _handlerId=null;
 
     var _options = {
-        arrowColor: '#fff',     //Color of the arrow
-        arrowLength: 20,        //Length of the arrow
-        arrowWidth: 30,         //Width of the arrow
-        borderColor: '#000',    //Color of the infobox border
-        color: '#fff',          //Background color of infobox
-        minHeight: 50,          //Minium height of the content area of the infobox
-        minWidth: 100,          //Minimium width of the content area of the infobox
-        offset: { x: 0, y: 0 }, //Offset distance of the infobox
-        orientation: 0,         //Orientation of the infobox: 0 - horizontal, 1 - vertical
+        arrowColor: '#fff',						//Color of the arrow
+        arrowLength: 20,						//Length of the arrow
+        arrowWidth: 30,							//Width of the arrow
+        borderColor: '#000',					//Color of the infobox border
+        color: '#fff',							//Background color of infobox
+        closeButtonColor: '#000',				//Color of the close button
+        closeButtonPadding: '2px 5px 0 0',		//padding for the close button
+        containerBorderColor: '#000',			//Color of the container border
+        minHeight: 50,							//Minimum height of the content area of the infobox
+        minWidth: 100,							//Minimum width of the content area of the infobox
+        offset: { x: 0, y: 0 },					//Offset distance of the infobox
+        orientation: 0,							//Orientation of the infobox: 0 - horizontal, 1 - vertical
         showArrow: true,
         showCloseButton: true,
-        tether: false
+        tether: false, 
+        containerClass: "mapInfoBoxContainer", 
+        contentClass: "mapInfoBoxContent", 
+        closeButtonClass: "mapInfoBoxCloseButton",
+        arrowClass: "mapInfoBoxArrow"
     };
 
     /*********************** Private Methods ****************************/
@@ -103,34 +74,34 @@ var CustomInfobox = function (map, options) {
         //Create an id for the infobox
         _infoboxContainerId = map.getRootElement().parentNode.id + "_infobox";
 
-        //Create infobox container
-        $('body').append("<div id='" + _infoboxContainerId + "' style='position:absolute;z-index:10000;display:none;'></div>");
-
         //initialize default tethering 
         _enableTethering(_options.tether);
 
         //Set user options
         _setOptions(options);
+        
+        //Create infobox container
+        $('body').append("<div id='" + _infoboxContainerId + "' class='" + _options.containerClass + "' style='position:absolute;z-index:10000;display:none;border:1px solid " + _options.containerBorderColor + "'></div>");
     }
 
     //Method for generating the infobox arrow
     function _createArrow(direction) {
-        var html = ["<div id='", _infoboxContainerId, "_arrow' style='position:relative;float:left;width:0;height:0;line-height:0;border-style:solid;"];
+        var html = ["<div id='", _infoboxContainerId, "_arrow'  class='" + _options.arrowClass + "' style='position:relative;float:left;width:0;height:0;line-height:0;border-style:solid;"];
         var w = _options.arrowWidth * 0.5;
         switch (direction) {
-            case 0: 	//Point up
+            case 0:		//Point up
                 html.push("border-width:0 ", w, "px ", _options.arrowLength, "px ", w, "px;");
                 html.push("border-color:transparent transparent ", _options.arrowColor, " transparent;");
                 break;
-            case 1: 	//Point Right
+            case 1:		//Point Right
                 html.push("border-width:", w, "px 0 ", w, "px ", _options.arrowLength, "px;");
                 html.push("border-color:transparent transparent transparent ", _options.arrowColor, ";");
                 break;
-            case 2: 	//Point Down
+            case 2:		//Point Down
                 html.push("border-width:", _options.arrowLength, "px ", w, "px 0 ", w, "px;");
                 html.push("border-color:", _options.arrowColor, " transparent transparent transparent;");
                 break;
-            case 3: 	//Point Left
+            case 3:		//Point Left
                 html.push("border-width:", w, "px ", _options.arrowLength, "px ", w, "px 0;");
                 html.push("border-color:transparent ", _options.arrowColor, " transparent transparent;");
                 break;
@@ -143,7 +114,7 @@ var CustomInfobox = function (map, options) {
 
     //method that controls is the 
     function _enableTethering(tether) {
-        if (_handlerId != null) {   //Remove existing event handler
+        if (_handlerId !== null) {   //Remove existing event handler
             Microsoft.Maps.Events.removeHandler(_handlerId);
         }
 
@@ -168,7 +139,7 @@ var CustomInfobox = function (map, options) {
     function _render() {
         var container = $('#' + _infoboxContainerId);
 
-        if (container != null && _anchor != null && _content != null) {
+        if (container !== null && _anchor !== null && _content !== null) {
             if (!_map.getBounds().contains(_anchor)) {  //hide if anchor is anchor latlong on the map
                 container.css('display', 'none');
             } else {
@@ -181,7 +152,7 @@ var CustomInfobox = function (map, options) {
                 key += (_map.getWidth() * 0.5 < pinPixel.x) ? 1 : 0;
 
                 //Wrap contents
-                var contents = ["<div id='", _infoboxContainerId, "_content' style='position:relative;float:left;border:1px solid ", _options.borderColor, ";background-color:", _options.color, ";min-width:", _options.minWidth, "px;min-height:", _options.minHeight, "px;'>", _content, "</div>"];
+                var contents = ["<div id='", _infoboxContainerId, "_content'  class='" + _options.contentClass + "' style='position:relative;float:left;border:1px solid ", _options.borderColor, ";background-color:", _options.color, ";min-width:", _options.minWidth, "px;min-height:", _options.minHeight, "px;'>", _content, "</div>"];
 
                 var arrowX = 0, arrowY = 0, html;
 
@@ -216,7 +187,7 @@ var CustomInfobox = function (map, options) {
 
                 //Add close button if enabled
                 if (_options.showCloseButton) {
-                    contentContainer.append("<span id='" + _infoboxContainerId + "_closeBtn' href='javascript:void()' style='position:absolute;right:5px;top:2px;cursor:pointer;font:bold 18px Arial;line-height:12px;'>x</span>");
+                    contentContainer.append("<span id='" + _infoboxContainerId + "_closeBtn' class='" + _options.closeButtonClass + "' href='javascript:void()' style='position:absolute;right:0px;top:0px;cursor:pointer;font:bold 18px Arial;line-height:12px;color:" + _options.closeButtonColor +";padding:" + _options.closeButtonPadding + "'>x</span>");
                     $('#' + _infoboxContainerId + '_closeBtn').click(function () {
                         _hide();
                     });
@@ -229,7 +200,8 @@ var CustomInfobox = function (map, options) {
                 var w = 0, h = 0, arrowOffsetTop = 0, arrowOffsetLeft = 0;
 
                 //Calculate dimensions of infobox container
-                if (_options.orientation) {
+
+                if (_options.orientation) {	//vertical
                     w = contentX;
                     h = contentY + arrowY;
 
@@ -245,14 +217,14 @@ var CustomInfobox = function (map, options) {
                     } else {
                         screenY -= _options.offset.y;
                     }
-                } else {
-                    w = arrowX + contentX + 2;  //The 2 is to make up for the boarder on the contents
+                } else {	//horizontal
+                    w = arrowX + contentX;  //No longer adding a 2 to make up for the border of the container
                     h = Math.max(contentY, arrowY);
 
                     if (key % 2) {  //right arrow
-                        screenX += _options.offset.x - w;
+                        screenX += -_options.offset.x - w;
                     } else {        //left
-                        screenX += _options.offset.x;
+                        screenX += _options.offset.x; 
                     }
 
                     if (key > 1) {
@@ -261,6 +233,8 @@ var CustomInfobox = function (map, options) {
                     } else {
                         screenY -= (_options.arrowWidth * 0.5 + _options.offset.y);
                     }
+                    
+                    
                 }
 
                 if (_options.showArrow) {
@@ -270,7 +244,7 @@ var CustomInfobox = function (map, options) {
 
                 container.css({ 'width': Math.ceil(w) + 'px', 'height': Math.ceil(h) + 'px', 'top': screenY, 'left': screenX });
             }
-        } else if (container != null) {    //hide infobox
+        } else if (container !== null) {    //hide infobox
             container.html('');
             container.css('display', 'none');
         }
@@ -280,7 +254,7 @@ var CustomInfobox = function (map, options) {
     function _setOptions(options) {
         var tetherVal = _options.tether;
 
-        for (attrname in options) {
+        for (var attrname in options) {
             _options[attrname] = options[attrname];
         }
 
